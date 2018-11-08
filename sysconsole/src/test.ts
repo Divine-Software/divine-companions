@@ -1,10 +1,13 @@
-import { sysconsole } from './sysconsole';
+import { SysConsole } from './sysconsole';
 
-Object.assign(console, sysconsole.set({  }));
+var sysconsole = SysConsole.replaceConsole();
+declare var console : SysConsole;
 
 function func() {
     console.log('foo');
     console.info('foo');
+
+    console.set({showDate: true});
 
     new Class().method();
 }
@@ -13,6 +16,7 @@ class Class {
     constructor() {
         console.debug('In constructor');
         console.trace('here');
+        console.alert('!!!')
     }
 
     method() {

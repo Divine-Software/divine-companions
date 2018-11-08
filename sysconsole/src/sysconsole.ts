@@ -3,16 +3,8 @@ import os from 'os';
 import path from 'path';
 import StackTrace from 'stack-trace';
 
-type Facility = 'kern' | 'user' | 'mail' | 'daemon' | 'auth' | 'syslog' | 'lpr' | 'news' | 'uucp' | 'cron' | 'authpriv' | 'ftp' | 'ntp' | 'security' | 'console' | 'local0' | 'local1' | 'local2' | 'local3' | 'local4' | 'local5' | 'local6' | 'local7 ';
-type Severity = 'emerg' | 'alert' | 'crit' | 'error' | 'warn' | 'notice' | 'info' | 'debug';
-
-const Facility: { [facility: string]: number } = {
-    kern: 0, user: 1, mail: 2, daemon: 3, auth: 4, syslog: 5, lpr: 6, news: 7, uucp: 8, cron: 9, authpriv: 10, ftp: 11, ntp: 12, security: 13, console: 14, local0: 16, local1: 17, local2: 18, local3: 19, local4: 20, local5: 21, local6: 22, local7: 23
-}
-
-const Severity: { [severity: string]: number } = {
-    emerg: 0, panic: 0, alert: 1,  crit: 2,  error: 3, err: 3, warn: 4, warning: 4, notice: 5, info: 6, debug: 7
-}
+export type Facility = 'kern' | 'user' | 'mail' | 'daemon' | 'auth' | 'syslog' | 'lpr' | 'news' | 'uucp' | 'cron' | 'authpriv' | 'ftp' | 'ntp' | 'security' | 'console' | 'local0' | 'local1' | 'local2' | 'local3' | 'local4' | 'local5' | 'local6' | 'local7 ';
+export type Severity = 'emerg' | 'alert' | 'crit' | 'error' | 'warn' | 'notice' | 'info' | 'debug';
 
 export interface SysConsoleOptions {
     highestLevel: Severity;
@@ -37,28 +29,53 @@ export interface SysConsoleOptions {
     showTags:     boolean;
 }
 
-const Options = Symbol('Options');
-
-export interface SysConsole extends Console {
-    [Options]: SysConsoleOptions;
-
-    set(options?: Partial<SysConsoleOptions>): this;
-
-    emerg(message?: any, ...optionalParams: any[]): void;
-    alert(message?: any, ...optionalParams: any[]): void;
-    crit(message?: any, ...optionalParams: any[]): void;
-    notice(message?: any, ...optionalParams: any[]): void;
-}
-
-class LogStream extends Writable {
-    static readonly tagLength = '[notice]'.length; // Longest tag
-
-    private rootDir: string;
-    private buffer = '';
-    private calls = 0;
+class LogBuffer extends Writable {
+    private _buffer = '';
 
     constructor() {
         super({decodeStrings: false, objectMode: false});
+    }
+
+    getAndClear(): string {
+        try {
+            return this._buffer;
+        }
+        finally {
+            this._buffer = '';
+        }
+    }
+
+    _write(chunk: string | Buffer, _encoding: string, callback: (error: Error | null) => void): void {
+        this._buffer += chunk.toString();
+        callback(null);
+    }
+}
+
+function padStart(str: string, pad: string, length: number) {
+    return (length > str.length ? Array(length - str.length + 1).join(pad) + str: str);
+}
+
+export class SysConsole extends console.Console {
+    private static readonly _facility: { [facility: string]: number } = {
+        kern: 0, user: 1, mail: 2, daemon: 3, auth: 4, syslog: 5, lpr: 6, news: 7, uucp: 8, cron: 9, authpriv: 10, ftp: 11, ntp: 12, security: 13, console: 14, local0: 16, local1: 17, local2: 18, local3: 19, local4: 20, local5: 21, local6: 22, local7: 23
+    }
+
+    private static readonly _severity: { [severity: string]: number } = {
+        emerg: 0, panic: 0, alert: 1,  crit: 2,  error: 3, err: 3, warn: 4, warning: 4, notice: 5, info: 6, debug: 7
+    }
+
+    private static readonly _tagLength = '[notice]'.length; // Longest tag
+
+    private _rootDir:   string;
+    private _counter:   number;
+    private _error:     (_message?: any, ..._optionalParams: any[]) => void;
+    private _log:       (_message?: any, ..._optionalParams: any[]) => void;
+    private _logBuffer: LogBuffer;
+    private _options:   SysConsoleOptions;
+
+    constructor(options?: Partial<SysConsoleOptions>) {
+        const logBuffer = new LogBuffer();
+        super(logBuffer);
 
         let rootModule = module;
 
@@ -66,140 +83,165 @@ class LogStream extends Writable {
             rootModule = rootModule.parent;
         }
 
-        this.rootDir = path.dirname(rootModule.filename);
-    }
+        this._rootDir   = path.dirname(rootModule.filename || '.');
+        this._counter   = 0;
+        this._error     = this.error;
+        this._log       = this.log;
+        this._logBuffer = logBuffer;
+        this._options   = {
+            highestLevel: 'debug',
 
-    _write(chunk: string | Buffer, _encoding: string, callback: (error: Error | null) => void): void {
-        this.buffer += chunk.toString();
-        callback(null);
-    }
+            stdout:       false,
+            stderr:       true,
 
-    beginCall() {
-        ++this.calls;
-    }
+            syslog:       true,
+            loghost:      'localhost',
+            logport:      514,
 
-    finishCall(fn: string, options: SysConsoleOptions) {
-        --this.calls;
+            hostname:     os.hostname(),
+            title:        process.title,
+            facility:     'user',
 
-        if (this.calls === 0 && this.buffer.length !== 0) {
-            if (fn === 'log') {
-                fn = 'notice';
-            }
-            else if (!(fn in Severity)) {
-                fn = 'debug';
-            }
+            showTime:     true,
+            showDate:     false,
+            showMillis:   true,
+            showLine:     true,
+            showFile:     true,
+            showFunc:     true,
+            showTags:     true,
+        };
 
-            let extra = '';
+        this.set(options);
 
-            if (options.showTime) {
-                const now = new Date();
-                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        // Patch all inherited methods
+        for (const fn in console.Console.prototype) {
+            const sc = this as any;
 
-                if (options.showDate) {
-                    extra += now.toISOString().substr(0, 10) + ' ';
-                }
+            if (typeof sc[fn]  === 'function') {
+                const orig = sc[fn];
 
-                extra += now.toISOString().substr(11, options.showMillis ? 12 : 8) + ' ';
-            }
-
-            if (options.showTags) {
-                extra += LogStream.padStart(`[${fn.toUpperCase()}]`, ' ', LogStream.tagLength) + ' ';
-            }
-
-            if (options.showFile || options.showLine || options.showFunc) {
-                const frame = StackTrace.get()[2];
-                const parts = [];
-
-                if (options.showFile) {
-                    parts.push(path.relative(this.rootDir, frame.getFileName()));
-
-                    if (options.showLine) {
-                        parts.push(frame.getLineNumber());
-                    }
-                }
-
-                if (options.showFunc) {
-                    const func = frame.getMethodName() || frame.getFunctionName();
-
-                    if (func) {
-                        parts.push((frame.getTypeName() ? `${frame.getTypeName()}.` : '') + func);
-                    }
-                }
-
-                if (parts.length) {
-                    extra += `[${parts.join(':')}] `;
+                sc[fn] = function() {
+                    return this._wrapper(fn, orig, arguments);
                 }
             }
-
-            if (options.stdout) {
-                process.stdout.write(extra + this.buffer);
-            }
-            else if (options.stderr) {
-                process.stderr.write(extra + this.buffer);
-            }
-
-            this.buffer = '';
         }
     }
 
-    private static padStart(str: string, pad: string, length: number) {
-        return (length > str.length ? Array(length - str.length + 1).join(pad) + str: str);
+    set(options?: Partial<SysConsoleOptions>): this {
+        this._options = { ...this._options, ...options };
+        return this;
     }
-}
 
-const logstream  = new LogStream();
-export const sysconsole = new console.Console(logstream) as SysConsole;
+    static replaceConsole(options?: Partial<SysConsoleOptions>): SysConsole {
+        const sc = new SysConsole(options) as any;
 
-sysconsole.emerg  = sysconsole.error;
-sysconsole.alert  = sysconsole.error;
-sysconsole.crit   = sysconsole.error;
-sysconsole.notice = sysconsole.log;
-
-for (const fn in sysconsole) {
-    const sc = sysconsole as any;
-
-    if (typeof sc[fn]  === 'function') {
-        const orig = sc[fn] as Function;
-
-        sc[fn] = function() {
-            try {
-                logstream.beginCall();
-                orig.apply(this, arguments);
+        try {
+            global.console = sc;
+        }
+        catch (_ignored) {
+            for (const fn of Object.keys(sc).concat(Object.getOwnPropertyNames(SysConsole.prototype))) {
+                if (typeof sc[fn] === 'function' && fn.charAt(0) !== '_' && fn !== 'constructor') {
+                    (global.console as any)[fn] = sc[fn].bind(sc);
+                }
             }
-            finally {
-                logstream.finishCall(fn, sysconsole[Options]);
+        }
+
+        return sc;
+    }
+
+    emerg(_message?: any, ..._optionalParams: any[]): void {
+        return this._wrapper('emerg', this._error, arguments);
+    }
+
+    alert(_message?: any, ..._optionalParams: any[]): void {
+        return this._wrapper('alert', this._error, arguments);
+    }
+
+    crit(_message?: any, ..._optionalParams: any[]): void {
+        return this._wrapper('crit', this._error, arguments);
+    }
+
+    notice(_message?: any, ..._optionalParams: any[]): void {
+        return this._wrapper('notice', this._log, arguments);
+    }
+
+    debug(_message?: any, ..._optionalParams: any[]): void {
+        return this._wrapper('debug', this._log, arguments);
+    }
+
+    private _wrapper(name: string, fn: Function, args: ArrayLike<any>) {
+        try {
+            ++this._counter;
+            return fn.apply(this, args);
+        }
+        finally {
+            --this._counter;
+
+            if (this._counter === 0) {
+                this._logMessage(name, this._logBuffer.getAndClear());
             }
         }
     }
-}
 
-sysconsole.set = function(options?: Partial<SysConsoleOptions>): SysConsole {
-    this[Options] = {
-        highestLevel: 'debug',
+    private _logMessage(fn: string, message: string) {
+        if (!message) {
+            return;
+        }
 
-        stdout:       false,
-        stderr:       true,
+        if (fn === 'log') {
+            fn = 'notice';
+        }
+        else if (!(fn in SysConsole._severity)) {
+            fn = 'debug';
+        }
 
-        syslog:       true,
-        loghost:      'localhost',
-        logport:      514,
+        let extra = '';
 
-        hostname:     os.hostname(),
-        title:        process.title,
-        facility:     'user',
+        if (this._options.showTime) {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
 
-        showTime:     true,
-        showDate:     false,
-        showMillis:   true,
-        showLine:     true,
-        showFile:     true,
-        showFunc:     true,
-        showTags:     true,
-        ...this[Options],
-        ...options
+            if (this._options.showDate) {
+                extra += now.toISOString().substr(0, 10) + ' ';
+            }
+
+            extra += now.toISOString().substr(11, this._options.showMillis ? 12 : 8) + ' ';
+        }
+
+        if (this._options.showTags) {
+            extra += padStart(`[${fn.toUpperCase()}]`, ' ', SysConsole._tagLength) + ' ';
+        }
+
+        if (this._options.showFile || this._options.showLine || this._options.showFunc) {
+            const frame = StackTrace.get()[3];
+            const parts = [];
+
+            if (this._options.showFile) {
+                parts.push(path.relative(this._rootDir, frame.getFileName()));
+
+                if (this._options.showLine) {
+                    parts.push(frame.getLineNumber());
+                }
+            }
+
+            if (this._options.showFunc) {
+                const func = frame.getMethodName() || frame.getFunctionName();
+
+                if (func) {
+                    parts.push((frame.getTypeName() ? `${frame.getTypeName()}.` : '') + func);
+                }
+            }
+
+            if (parts.length) {
+                extra += `[${parts.join(':')}] `;
+            }
+        }
+
+        if (this._options.stdout) {
+            process.stdout.write(extra + message);
+        }
+        else if (this._options.stderr) {
+            process.stderr.write(extra + message);
+        }
     }
-
-    return this;
 }
-
-sysconsole.set();
