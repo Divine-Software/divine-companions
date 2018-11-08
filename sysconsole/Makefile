@@ -1,7 +1,7 @@
 all:		build
 
 clean:
-	rm -rf dist node_modules
+	rm -rf lib node_modules
 
 prepare:
 	yarn

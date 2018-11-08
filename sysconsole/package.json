@@ -14,8 +14,8 @@
   "repository": "LeviticusMB/sysconsole",
   "license": "MIT",
   "author": "Martin Blom <martin@blom.org>",
-  "main": "dist/sysconsole.js",
-  "types": "dist/sysconsole.d.ts",
+  "main": "lib/sysconsole.js",
+  "types": "lib/sysconsole.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
