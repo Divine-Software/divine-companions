@@ -1,6 +1,6 @@
 {
   "name": "@divine/sysconsole",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A Console that also sends the logs to a remote Syslog server",
   "keywords": [
     "console",
