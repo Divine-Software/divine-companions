@@ -4,7 +4,7 @@ declare module "syslog-client" {
         Udp = 2,
     }
 
-    export interface LogOptions {
+    export interface CommonOptions {
         syslogHostname?: string;
         facility?:       number;
         severity?:       number;
@@ -12,14 +12,24 @@ declare module "syslog-client" {
         appName?:        string;
     }
 
-    export interface ClientOptions extends LogOptions {
+    export interface ClientOptions extends CommonOptions {
         port?:           number;
         tcpTimeout?:     number;
         dateFormatter?:  ((this: Date) => string);
         transport?:      Transport;
     }
 
+    export interface LogOptions extends CommonOptions {
+        msgid?:          string;
+        timestamp?:      Date;
+    }
+
     export class Client extends NodeJS.EventEmitter {
+        target: string;
+        port: number;
+        transport: Transport;
+        connecting?: boolean;
+
         constructor(target?: string, options?: ClientOptions);
         close(): this;
         log(message: string, options?: LogOptions): this;

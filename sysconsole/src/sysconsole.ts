@@ -1,32 +1,38 @@
-import { Writable } from 'stream';
 import os from 'os';
 import path from 'path';
 import StackTrace from 'stack-trace';
+import Syslog from 'syslog-client';
+import { Writable } from 'stream';
 
 export type Facility = 'kern' | 'user' | 'mail' | 'daemon' | 'auth' | 'syslog' | 'lpr' | 'news' | 'uucp' | 'cron' | 'authpriv' | 'ftp' | 'ntp' | 'security' | 'console' | 'local0' | 'local1' | 'local2' | 'local3' | 'local4' | 'local5' | 'local6' | 'local7 ';
 export type Severity = 'emerg' | 'alert' | 'crit' | 'error' | 'warn' | 'notice' | 'info' | 'debug';
 
 export interface SysConsoleOptions {
-    highestLevel: Severity;
+    highestLevel:   Severity;
 
-    syslog:       boolean;
-    loghost:      string;
-    logport:      number;
+    syslog:         boolean;
+    loghost:        string;
+    logport:        number;
+    tcpTimeout:     number | null;
 
-    stdout:       boolean,
-    stderr:       boolean,
+    stdout:         boolean,
+    stderr:         boolean,
 
-    hostname:     string;
-    title:        string;
-    facility:     Facility;
+    hostname:       string;
+    title:          string;
+    facility:       Facility;
 
-    showTime:     boolean;
-    showDate:     boolean;
-    showMillis:   boolean;
-    showLine:     boolean;
-    showFile:     boolean;
-    showFunc:     boolean;
-    showTags:     boolean;
+    showTime:       boolean;
+    showDate:       boolean;
+    showMillis:     boolean;
+    showTags:       boolean;
+    showLine:       boolean;
+    showFile:       boolean;
+    showFunc:       boolean;
+
+    syslogHashTags: boolean;
+    syslogTags:     boolean;
+    syslogMsgId:    boolean | string;
 }
 
 class LogBuffer extends Writable {
@@ -67,11 +73,14 @@ export class SysConsole extends console.Console {
     private static readonly _tagLength = '[notice]'.length; // Longest tag
 
     private _rootDir:   string;
+    private _rootFile:  string;
     private _counter:   number;
     private _error:     (_message?: any, ..._optionalParams: any[]) => void;
     private _log:       (_message?: any, ..._optionalParams: any[]) => void;
     private _logBuffer: LogBuffer;
-    private _options:   SysConsoleOptions;
+    private _syslog?:   Syslog.Client;
+
+    options: SysConsoleOptions;
 
     constructor(options?: Partial<SysConsoleOptions>) {
         const logBuffer = new LogBuffer();
@@ -84,31 +93,37 @@ export class SysConsole extends console.Console {
         }
 
         this._rootDir   = path.dirname(rootModule.filename || '.');
+        this._rootFile  = rootModule.filename ? path.basename(rootModule.filename) : process.title;
         this._counter   = 0;
         this._error     = this.error;
         this._log       = this.log;
         this._logBuffer = logBuffer;
-        this._options   = {
-            highestLevel: 'debug',
+        this.options   = {
+            highestLevel:   'debug',
 
-            stdout:       false,
-            stderr:       true,
+            stdout:         false,
+            stderr:         true,
 
-            syslog:       true,
-            loghost:      'localhost',
-            logport:      514,
+            syslog:         true,
+            loghost:        '127.0.0.1',
+            logport:        514,
+            tcpTimeout:     null,
 
-            hostname:     os.hostname(),
-            title:        process.title,
-            facility:     'user',
+            hostname:       os.hostname(),
+            title:          this._rootFile,
+            facility:       'user',
 
-            showTime:     true,
-            showDate:     false,
-            showMillis:   true,
-            showLine:     true,
-            showFile:     true,
-            showFunc:     true,
-            showTags:     true,
+            showTime:       true,
+            showDate:       false,
+            showMillis:     true,
+            showTags:       true,
+            showLine:       true,
+            showFile:       true,
+            showFunc:       false,
+
+            syslogHashTags: false,
+            syslogTags:     false,
+            syslogMsgId:    false,
         };
 
         this.set(options);
@@ -120,7 +135,7 @@ export class SysConsole extends console.Console {
             if (typeof sc[fn]  === 'function') {
                 const orig = sc[fn];
 
-                sc[fn] = function() {
+                sc[fn] = function(this: SysConsole) {
                     return this._wrapper(fn, orig, arguments);
                 }
             }
@@ -128,8 +143,17 @@ export class SysConsole extends console.Console {
     }
 
     set(options?: Partial<SysConsoleOptions>): this {
-        this._options = { ...this._options, ...options };
-        return this;
+        this.options = { ...this.options, ...options };
+
+        if (typeof SysConsole._facility[this.options.facility] !== 'number') {
+            throw new TypeError(`Invalid facility value '${this.options.facility}'`);
+        }
+
+        if (typeof SysConsole._severity[this.options.highestLevel] !== 'number') {
+            throw new TypeError(`Invalid highestLevel value '${this.options.highestLevel}'`);
+        }
+
+        return this._initSyslog();
     }
 
     static replaceConsole(options?: Partial<SysConsoleOptions>): SysConsole {
@@ -169,7 +193,24 @@ export class SysConsole extends console.Console {
         return this._wrapper('debug', this._log, arguments);
     }
 
-    private _wrapper(name: string, fn: Function, args: ArrayLike<any>) {
+    private _initSyslog(): this {
+        const target    = this.options.loghost;
+        const port      = this.options.logport;
+        const transport = this.options.tcpTimeout !== null ? Syslog.Transport.Tcp : Syslog.Transport.Udp;
+
+        if (this._syslog && this._syslog.target !== target &&  this._syslog.port !== port && this._syslog.transport !== transport) {
+            this._syslog.close();
+            this._syslog = undefined;
+        }
+
+        if (this.options.syslog && !this._syslog) {
+            this._syslog = Syslog.createClient(target, { port, transport, tcpTimeout: this.options.tcpTimeout || undefined });
+        }
+
+        return this;
+    }
+
+    private _wrapper(name: string, fn: Function, args: ArrayLike<any>): any {
         try {
             ++this._counter;
             return fn.apply(this, args);
@@ -183,65 +224,91 @@ export class SysConsole extends console.Console {
         }
     }
 
-    private _logMessage(fn: string, message: string) {
-        if (!message) {
+    private _logMessage(level: string, message: string) {
+        level = level === 'log' ? 'info' : level;
+
+        if (typeof SysConsole._severity[level] !== 'number') {
+            level = 'debug';
+        }
+
+        if (!message || SysConsole._severity[level] > SysConsole._severity[this.options.highestLevel]) {
             return;
         }
 
-        if (fn === 'log') {
-            fn = 'notice';
-        }
-        else if (!(fn in SysConsole._severity)) {
-            fn = 'debug';
-        }
+        let consoleHeader = '';
+        let syslogHeader  = '';
+        let syslogMsgId   = typeof this.options.syslogMsgId === 'string' ? this.options.syslogMsgId : '';
 
-        let extra = '';
-
-        if (this._options.showTime) {
+        if (this.options.showTime) {
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
 
-            if (this._options.showDate) {
-                extra += now.toISOString().substr(0, 10) + ' ';
+            if (this.options.showDate) {
+                consoleHeader += now.toISOString().substr(0, 10) + ' ';
             }
 
-            extra += now.toISOString().substr(11, this._options.showMillis ? 12 : 8) + ' ';
+            consoleHeader += now.toISOString().substr(11, this.options.showMillis ? 12 : 8) + ' ';
         }
 
-        if (this._options.showTags) {
-            extra += padStart(`[${fn.toUpperCase()}]`, ' ', SysConsole._tagLength) + ' ';
+        if (this.options.showTags) {
+            consoleHeader += padStart(`[${level.toUpperCase()}]`, ' ', SysConsole._tagLength) + ' ';
         }
 
-        if (this._options.showFile || this._options.showLine || this._options.showFunc) {
+        if (this.options.syslogHashTags) {
+            syslogHeader += `$${level}`;
+        }
+        else if (this.options.syslogTags) {
+            syslogHeader += `[${level.toUpperCase()}] `;
+        }
+
+        if (this.options.showFile || this.options.showLine || this.options.showFunc || this.options.syslogMsgId === true) {
             const frame = StackTrace.get()[3];
+            const file  = path.relative(this._rootDir, frame.getFileName());
             const parts = [];
 
-            if (this._options.showFile) {
-                parts.push(path.relative(this._rootDir, frame.getFileName()));
+            if (this.options.showFile) {
+                parts.push(file);
 
-                if (this._options.showLine) {
+                if (this.options.showLine) {
                     parts.push(frame.getLineNumber());
                 }
             }
 
-            if (this._options.showFunc) {
+            if (this.options.syslogMsgId === true) {
+                syslogMsgId = file;
+            }
+
+            if (this.options.showFunc) {
+                const type = frame.getTypeName() ? `${frame.getTypeName()}.` : '';
                 const func = frame.getMethodName() || frame.getFunctionName();
 
                 if (func) {
-                    parts.push((frame.getTypeName() ? `${frame.getTypeName()}.` : '') + func);
+                    parts.push(type + func);
                 }
             }
 
             if (parts.length) {
-                extra += `[${parts.join(':')}] `;
+                consoleHeader += `[${parts.join(':')}] `;
+                syslogHeader  += `[${parts.join(':')}] `;
             }
         }
 
-        if (this._options.stdout) {
-            process.stdout.write(extra + message);
+        if (this.options.stdout) {
+            process.stdout.write(consoleHeader + message);
         }
-        else if (this._options.stderr) {
-            process.stderr.write(extra + message);
+        else if (this.options.stderr) {
+            process.stderr.write(consoleHeader + message);
+        }
+
+        if (this._syslog) {
+            this._syslog.log(syslogHeader + message, {
+                rfc3164:        false,
+                facility:       SysConsole._facility[this.options.facility],
+                severity:       SysConsole._severity[level],
+                syslogHostname: this.options.hostname,
+                appName:        this.options.title,
+                msgid:          syslogMsgId || undefined,
+            });
         }
     }
 }
