@@ -198,7 +198,7 @@ export class SysConsole extends console.Console {
         const port      = this.options.logport;
         const transport = this.options.tcpTimeout !== null ? Syslog.Transport.Tcp : Syslog.Transport.Udp;
 
-        if (this._syslog && this._syslog.target !== target &&  this._syslog.port !== port && this._syslog.transport !== transport) {
+        if (this._syslog && (this._syslog.target !== target || this._syslog.port !== port || this._syslog.transport !== transport)) {
             this._syslog.close();
             this._syslog = undefined;
         }
