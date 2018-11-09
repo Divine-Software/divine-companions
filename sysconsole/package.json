@@ -16,6 +16,9 @@
   "author": "Martin Blom <martin@blom.org>",
   "main": "lib/sysconsole.js",
   "types": "lib/sysconsole.d.ts",
+  "files": [
+    "lib"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
