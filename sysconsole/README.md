@@ -3,7 +3,7 @@
 This is a pure JavaScript (or TypeScript, actually) `Console` replacement for *Node.js* that sends all the log messages
 to a remote syslog server via either UDP or TCP.
 
-It's more or less [rconsole]()-compatible.
+It's more or less [rconsole](https://github.com/tblobaum/rconsole)-compatible.
 
 ## How to use
 
