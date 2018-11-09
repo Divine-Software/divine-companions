@@ -1,6 +1,7 @@
 import { SysConsole } from './sysconsole';
+import { test2 } from './test2';
 
-var sysconsole = SysConsole.replaceConsole();
+var sysconsole = SysConsole.replaceConsole({ syslogMsgId: true, syslogTags: true });
 declare var console : SysConsole;
 
 function func() {
@@ -31,3 +32,10 @@ class Class {
 }
 
 func();
+test2();
+
+console.set({highestLevel: 'notice'});
+console.trace('Not shown');
+console.debug('Not shown');
+console.info('Not shown');
+console.notice('Shown');
