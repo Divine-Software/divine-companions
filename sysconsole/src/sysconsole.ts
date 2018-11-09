@@ -163,9 +163,12 @@ export class SysConsole extends console.Console {
             global.console = sc;
         }
         catch (_ignored) {
-            for (const fn of Object.keys(sc).concat(Object.getOwnPropertyNames(SysConsole.prototype))) {
-                if (typeof sc[fn] === 'function' && fn.charAt(0) !== '_' && fn !== 'constructor') {
-                    (global.console as any)[fn] = sc[fn].bind(sc);
+            for (const prop of Object.keys(sc).concat(Object.getOwnPropertyNames(SysConsole.prototype))) {
+                if (typeof sc[prop] === 'function' && prop.charAt(0) !== '_' && prop !== 'constructor') {
+                    (global.console as any)[prop] = sc[prop].bind(sc);
+                }
+                else if (sc[prop] !== 'function' && prop.charAt(0) !== '_') {
+                    (global.console as any)[prop] = sc[prop];
                 }
             }
         }
