@@ -153,6 +153,13 @@ export class SysConsole extends console.Console {
             throw new TypeError(`Invalid highestLevel value '${this.options.highestLevel}'`);
         }
 
+        // Extract port from loghost, if present
+        if (/^[^:]*:[0-9]+$/.test(this.options.loghost)) {
+            const [ host, port ] = this.options.loghost.split(':');
+            this.options.loghost = host || "127.0.0.1";
+            this.options.logport = Number(port);
+        }
+
         return this._initSyslog();
     }
 
