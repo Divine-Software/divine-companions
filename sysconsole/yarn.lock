@@ -2,15 +2,22 @@
 # yarn lockfile v1
 
 
-"@types/node@^6.0.118":
-  version "6.14.1"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-6.14.1.tgz#162b9001be0bb660708cd69e23f390abc1076fe5"
-  integrity sha512-lfydm+Ul6buYjF6AmcenFjqVYB+tpNlGlwWLr43J1Cok4ybLQimrM8rdB1MdrjtyWdYRceZNgsAeSRZhFxNajQ==
+"@types/node@*", "@types/node@14":
+  version "14.11.1"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.11.1.tgz#56af902ad157e763f9ba63d671c39cda3193c835"
+  integrity sha512-oTQgnd0hblfLsJ6BvJzzSL+Inogp3lq9fGgqRkMB/ziKMgEUaFl801OncOzUmalfzt14N0oPHMK47ipl+wbTIw==
 
 "@types/stack-trace@^0.0.29":
   version "0.0.29"
   resolved "https://registry.yarnpkg.com/@types/stack-trace/-/stack-trace-0.0.29.tgz#eb7a7c60098edb35630ed900742a5ecb20cfcb4d"
   integrity sha512-TgfOX+mGY/NyNxJLIbDWrO9DjGoVSW9+aB8H2yy1fy32jsvxijhmyJI9fDFgvz3YP4lvJaq9DzdR/M1bOgVc9g==
+
+"@types/syslog-client@^1.1.1":
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/@types/syslog-client/-/syslog-client-1.1.1.tgz#53ef8881f42563fd62989af11cd8d833d3d41345"
+  integrity sha512-AizNdH5H/+wYIPTBt8C4rLD6xK+YQfDWb/0yt7qhGR+VqLtO1Whp66BThNl3AmMgHyAvHVcOaIGxD5tAjxHPsQ==
+  dependencies:
+    "@types/node" "*"
 
 stack-trace@^0.0.10:
   version "0.0.10"
@@ -22,7 +29,7 @@ syslog-client@1.1.1:
   resolved "https://registry.yarnpkg.com/syslog-client/-/syslog-client-1.1.1.tgz#bdb28de3b5b7eb28a11352ec3eb78e55aed2ab6b"
   integrity sha1-vbKN47W36yihE1LsPreOVa7Sq2s=
 
-typescript@^3.1.6:
-  version "3.1.6"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.1.6.tgz#b6543a83cfc8c2befb3f4c8fba6896f5b0c9be68"
-  integrity sha512-tDMYfVtvpb96msS1lDX9MEdHrW4yOuZ4Kdc4Him9oU796XldPYF/t2+uKoX0BBa0hXXwDlqYQbXY5Rzjzc5hBA==
+typescript@^4.0.2:
+  version "4.0.2"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.0.2.tgz#7ea7c88777c723c681e33bf7988be5d008d05ac2"
+  integrity sha512-e4ERvRV2wb+rRZ/IQeb3jm2VxBsirQLpQhdxplZ2MEzGvDkkMmPglecnNDfSUBivMjP93vRbngYYDQqQ/78bcQ==

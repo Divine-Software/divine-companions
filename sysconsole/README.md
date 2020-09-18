@@ -16,3 +16,15 @@ declare var console : SysConsole;
 
 SysConsole.replaceConsole({ loghost: 'localhost', facility: 'local0', title: 'MySweetApp', showFile: false, syslogTags: true, highestLevel: 'info' });
 ```
+
+## History
+
+### `2.0.0` (2020-09-18)
+
+* Now supports passing custom `InspectOptions`.
+* Color support.
+* Requires *NodeJS* v10 because of this.
+
+### `1.1.0` (2018-11-10)
+
+* Initial public release.

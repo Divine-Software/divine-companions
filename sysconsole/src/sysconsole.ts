@@ -1,8 +1,9 @@
 import os from 'os';
 import path from 'path';
 import StackTrace from 'stack-trace';
-import Syslog from 'syslog-client';
 import { Writable } from 'stream';
+import Syslog from 'syslog-client';
+import { InspectOptions } from 'util';
 
 export type Facility = 'kern' | 'user' | 'mail' | 'daemon' | 'auth' | 'syslog' | 'lpr' | 'news' | 'uucp' | 'cron' | 'authpriv' | 'ftp' | 'ntp' | 'security' | 'console' | 'local0' | 'local1' | 'local2' | 'local3' | 'local4' | 'local5' | 'local6' | 'local7 ';
 export type Severity = 'emerg' | 'alert' | 'crit' | 'error' | 'warn' | 'notice' | 'info' | 'debug';
@@ -35,6 +36,8 @@ export interface SysConsoleOptions {
     syslogMsgId:    boolean | string;
 }
 
+const ANSI_REGEXP = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+
 class LogBuffer extends Writable {
     private _buffer = '';
 
@@ -57,7 +60,32 @@ class LogBuffer extends Writable {
     }
 }
 
-function padStart(str: string, pad: string, length: number) {
+function getRootModule(module: NodeModule): NodeModule {
+    while (module.parent) {
+        module = module.parent;
+    }
+
+    return module;
+}
+
+interface ColorStream {
+    isTTY?: boolean;
+    getColorDepth?(env?: {}): number;
+}
+
+function defaultColorForStream(stream: NodeJS.WritableStream & ColorStream): boolean {
+    return stream.isTTY === true && (typeof stream.getColorDepth === 'function' ? stream.getColorDepth() > 2 : true);
+}
+
+function defaultColorOption(options: SysConsoleOptions): boolean {
+    return options.stdout ? defaultColorForStream(process.stdout) : options.stderr ? defaultColorForStream(process.stderr) : false;
+}
+
+function stripANSI(message: string): string {
+    return message.replace(ANSI_REGEXP, '');
+}
+
+function padStart(str: string, pad: string, length: number): string {
     return (length > str.length ? Array(length - str.length + 1).join(pad) + str: str);
 }
 
@@ -73,7 +101,6 @@ export class SysConsole extends console.Console {
     private static readonly _tagLength = '[notice]'.length; // Longest tag
 
     private _rootDir:   string;
-    private _rootFile:  string;
     private _counter:   number;
     private _error:     (_message?: any, ..._optionalParams: any[]) => void;
     private _log:       (_message?: any, ..._optionalParams: any[]) => void;
@@ -82,23 +109,11 @@ export class SysConsole extends console.Console {
 
     options: SysConsoleOptions;
 
-    constructor(options?: Partial<SysConsoleOptions>) {
-        const logBuffer = new LogBuffer();
-        super(logBuffer);
-
-        let rootModule = module;
-
-        while (rootModule.parent) {
-            rootModule = rootModule.parent;
-        }
-
-        this._rootDir   = path.dirname(rootModule.filename || '.');
-        this._rootFile  = rootModule.filename ? path.basename(rootModule.filename) : process.title;
-        this._counter   = 0;
-        this._error     = this.error;
-        this._log       = this.log;
-        this._logBuffer = logBuffer;
-        this.options   = {
+    constructor(options?: Partial<SysConsoleOptions>, inspectOptions?: InspectOptions) {
+        const logBuffer     = new LogBuffer();
+        const rootModule    = getRootModule(module);
+        const rootFile      = rootModule.filename ? path.basename(rootModule.filename) : process.title;
+        const defaultOptions: SysConsoleOptions = {
             highestLevel:   'debug',
 
             stdout:         false,
@@ -110,7 +125,7 @@ export class SysConsole extends console.Console {
             tcpTimeout:     null,
 
             hostname:       os.hostname(),
-            title:          this._rootFile,
+            title:          rootFile,
             facility:       'user',
 
             showTime:       true,
@@ -125,6 +140,19 @@ export class SysConsole extends console.Console {
             syslogTags:     false,
             syslogMsgId:    false,
         };
+
+        super({
+            stdout:    logBuffer,
+            colorMode: inspectOptions?.colors === undefined ? defaultColorOption({ ...defaultOptions, ...options }) : undefined,
+            inspectOptions,
+        });
+
+        this._rootDir   = path.dirname(rootModule.filename || '.');
+        this._counter   = 0;
+        this._error     = this.error;
+        this._log       = this.log;
+        this._logBuffer = logBuffer;
+        this.options    = defaultOptions;
 
         this.set(options);
 
@@ -163,8 +191,8 @@ export class SysConsole extends console.Console {
         return this._initSyslog();
     }
 
-    static replaceConsole(options?: Partial<SysConsoleOptions>): SysConsole {
-        const sc = new SysConsole(options) as any;
+    static replaceConsole(options?: Partial<SysConsoleOptions>, inspectOptions?: InspectOptions): SysConsole {
+        const sc = new SysConsole(options, inspectOptions) as any;
 
         try {
             global.console = sc;
@@ -208,12 +236,10 @@ export class SysConsole extends console.Console {
         const port      = this.options.logport;
         const transport = this.options.tcpTimeout !== null ? Syslog.Transport.Tcp : Syslog.Transport.Udp;
 
-        if (this._syslog && (this._syslog.target !== target || this._syslog.port !== port || this._syslog.transport !== transport)) {
-            this._syslog.close();
-            this._syslog = undefined;
-        }
+        this._syslog?.close();
+        this._syslog = undefined;
 
-        if (this.options.syslog && !this._syslog) {
+        if (this.options.syslog) {
             this._syslog = Syslog.createClient(target, { port, transport, tcpTimeout: this.options.tcpTimeout || undefined });
         }
 
@@ -265,7 +291,7 @@ export class SysConsole extends console.Console {
         }
 
         if (this.options.syslogHashTags) {
-            syslogHeader += `$${level}`;
+            syslogHeader += `#${level}`;
         }
         else if (this.options.syslogTags) {
             syslogHeader += `[${level.toUpperCase()}] `;
@@ -311,7 +337,7 @@ export class SysConsole extends console.Console {
         }
 
         if (this._syslog) {
-            this._syslog.log(syslogHeader + message, {
+            this._syslog.log(syslogHeader + stripANSI(message), {
                 rfc3164:        false,
                 facility:       SysConsole._facility[this.options.facility],
                 severity:       SysConsole._severity[level],

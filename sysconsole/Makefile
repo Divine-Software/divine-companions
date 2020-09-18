@@ -1,7 +1,7 @@
-all:		build
+NAME		:= $(shell node -p 'require(`./package.json`).name')
+VERSION		:= $(shell node -p 'require(`./package.json`).version')
 
-clean:
-	rm -rf lib node_modules
+all:		build
 
 prepare:
 	yarn
@@ -9,8 +9,18 @@ prepare:
 build:		prepare
 	yarn run tsc
 
-publish:	clean build
-	@[[ -z "$$(git status --porcelain)" && "$$(git describe)" =~ ^v[0-9]+\.[0-9]+\.[0-9]$$ ]] || (git describe; git status; false)
-	npm publish --access publish
+clean:
+	rm -rf lib
 
-.PHONY:	all clean prepare build
+distclean:	clean
+	rm -rf node_modules
+
+tag:
+	@[[ -z "$$(git status --porcelain)" ]] || (git status; false)
+	git tag -s v$(VERSION) -m "$(NAME) v$(VERSION)"
+
+publish:	distclean build
+	@[[ -z "$$(git status --porcelain)" && "$$(git describe)" == v$(VERSION) ]] || (git describe; git status; false)
+	yarn publish --non-interactive --access public
+
+.PHONY:		all prepare build clean distclean tag publish
