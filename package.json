@@ -1,0 +1,33 @@
+{
+  "name": "@divine/companions",
+  "version": "1.0.0",
+  "description": "The Divine Companions Monorepo",
+  "author": "Martin Blom <martin@blom.org>",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/Divine-Software/companions.git",
+  "bugs": "https://github.com/Divine-Software/companions/issues",
+  "private": true,
+  "jest": {
+    "projects": [
+      "<rootDir>/*/package.json"
+    ],
+    "collectCoverage": true
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.23.0",
+    "@types/jest": "^28.1.4",
+    "@typescript-eslint/eslint-plugin": "^5.30.0",
+    "@typescript-eslint/parser": "^5.30.0",
+    "eslint": "^8.18.0",
+    "eslint-import-resolver-node": "~0.3.6",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-jest": "^26.5.3",
+    "eslint-plugin-jsdoc": "^39.3.3",
+    "jest": "^28.1.2",
+    "jest-cli": "^28.1.2",
+    "typescript": "~4.7.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": []
+  }
+}
