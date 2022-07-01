@@ -1,0 +1,26 @@
+{
+  "name": "@divine/localization",
+  "version": "0.1.0",
+  "description": "The Divine Localization Library",
+  "author": "Martin Blom <martin@blom.org>",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/Divine-Software/WSF.git",
+  "bugs": "https://github.com/Divine-Software/WSF/issues",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
+  "files": [
+    "CHANGELOG.md",
+    "build/src",
+    "build/package*",
+    "src"
+  ],
+  "jest": {
+    "testMatch": [
+      "<rootDir>/build/test/**/*.test.js"
+    ],
+    "collectCoverage": true
+  },
+  "dependencies": {
+    "tslib": "^2.4.0"
+  }
+}
