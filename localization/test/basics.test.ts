@@ -50,7 +50,7 @@ describe('plain string translation', () => {
             gr: null,
         }
 
-        const tran = translated(base, lang1, lang2, lang3) as typeof base;
+        const tran = translated(base, lang1, undefined, lang2, null, lang3) as typeof base;
 
         expect(tran.k1).toBe(base.k1);
         expect(tran.k2).toBe(lang1.k2);

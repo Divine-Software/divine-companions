@@ -18,7 +18,7 @@ where a particular translation is used by the program, or if it's even used at a
 Additionally, in web applications in particular, you may sometimes want to translate rich-text/markup and not just plain
 text. No can do. So now the application has to know if a particular sentence should be HTML-encoded or not, with no way
 to enforce that all translations match — and prepare to get p0wned if you forget to encode a parameter.
-\
+
 ## The Conviction
 
 This TypeScript library is really more dogma than code. In fact, it currently only exposes a single function! However:
