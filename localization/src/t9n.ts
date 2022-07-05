@@ -4,10 +4,34 @@ type DeepPartialOrNull<T> =
     T extends object ? { [P in keyof T]?: DeepPartialOrNull<T[P]> | null } :
     T;
 
+/**
+ * The base/canonical translation must adhere to this interface.
+ *
+ * @template T The allowed key types.
+ */
 export interface BaseTranslation<T> extends Record<string, T | BaseTranslation<T>> { }
+
+/**
+ * The type of all translations except the base/canonical translation.
+ *
+ * @template Base The type of the base/canonical translation.
+ */
 export type Translation<Base extends BaseTranslation<unknown>> = DeepPartialOrNull<Base>;
+
+/**
+ * A translation key function. Useful when specifying the {@link translated} type argument.
+ */
 export type Interpolated<T> = (...params: any[]) => T
 
+/**
+ * A function that builds a merged view of all translations. The merging is done on-demand using a Proxy wrapper.
+ *
+ * @template T             The allowed key types. Force this type parameter to ensure your translations are what you
+ *                         expect.
+ * @param    base          The base translation, which defines what keys are available.
+ * @param    translations  Additional — possibly partial — translations, in *increasing* order of priority.
+ * @returns                A Proxy-based merged view of the translations.
+ */
 export function translated<T>(base: BaseTranslation<T>, ...translations: Translation<typeof base>[]): typeof base {
     return new Proxy(base as any, new T9NProxyHandler([base, ...translations]));
 }
