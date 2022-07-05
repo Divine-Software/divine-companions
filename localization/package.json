@@ -1,6 +1,6 @@
 {
   "name": "@divine/localization",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The Divine Localization Library",
   "author": "Martin Blom <martin@blom.org>",
   "license": "Apache-2.0",
