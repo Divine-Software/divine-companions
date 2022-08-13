@@ -1,4 +1,4 @@
-import { translated, Translation } from '../src';
+import { translated, Translation, Translations } from '../src';
 
 describe('plain string translation', () => {
     it('returns props as-is', () => {
@@ -58,6 +58,10 @@ describe('plain string translation', () => {
         expect(tran.gr.k4).toBe(base.gr.k4);
         expect(tran.gr.k5).toBe(lang1.gr?.k5);
         expect(tran.gr.k6).toBe(lang2.gr?.k6);
+
+        const dict = translated(base, { lang1, lang2, lang3 }, [ 'lang1', 'missing', 'lang2', 'lang3' ]) as typeof base;
+
+        expect(dict).toStrictEqual(tran);
     });
 
     it('respects base object structure', () => {
@@ -79,5 +83,42 @@ describe('plain string translation', () => {
         expect(tran.g2).toBeUndefined()
         expect(tran.g2?.k2).toBeUndefined();
         expect(lang.g2?.k2).toBe('v2');
+    });
+
+    it('expands language tags', () => {
+        const base = {
+            k1: 'b1',
+            k2: 'b2',
+            k3: 'b3',
+        };
+
+        const translations: Translations<typeof base> = {
+            'sv': {
+                k1: 's1',
+                k2: 's2',
+            },
+
+            'sv-SE': {
+                k1: 'S1'
+            }
+        }
+
+        let tran = translated(base, translations, [ 'sv', 'miss1', 'sv-SE', 'miss2' ]) as typeof base;
+
+        expect(tran.k1).toBe('S1');
+        expect(tran.k2).toBe('s2');
+        expect(tran.k3).toBe('b3');
+
+        tran = translated(base, translations, 'Sv-Se') as typeof base;
+
+        expect(tran.k1).toBe('S1');
+        expect(tran.k2).toBe('s2');
+        expect(tran.k3).toBe('b3');
+
+        tran = translated(base, translations, 'Sv') as typeof base;
+
+        expect(tran.k1).toBe('s1');
+        expect(tran.k2).toBe('s2');
+        expect(tran.k3).toBe('b3');
     });
 });
