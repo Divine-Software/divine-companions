@@ -1,5 +1,11 @@
 # @divine/localization
 
+## 0.2.0
+
+### Minor Changes
+
+- 6990619: Translations may now be fetched from a dictionary as well as an array.
+
 ## 0.1.2
 
 ### Patch Changes
