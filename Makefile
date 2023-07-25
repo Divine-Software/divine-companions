@@ -28,7 +28,7 @@ distclean::									## Like clean, but also remove all dependencies
 	rm -rf node_modules
 
 commit:		prepare								## Commit a change and create a change-log entry for it
-	pnpm changeset
+	pnpm exec changeset
 
 release:	pristine prepare						## Bump all package versions and generate change-log.
 	pnpm exec changeset version

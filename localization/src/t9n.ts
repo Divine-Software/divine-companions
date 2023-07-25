@@ -56,14 +56,17 @@ export function translated<T>(base: BaseTranslation<T>, translations: Translatio
  */
 export function translated<T>(base: BaseTranslation<T>, ...translations: Array<Translation<typeof base> | undefined | null>): typeof base;
 export function translated<T>(base: BaseTranslation<T>, ...args: Array<Translation<typeof base> | undefined | null> | [translations: Translations<typeof base>, languages: string | string[]]): typeof base {
-    const [ translations, languages ] = args;
+    const [ _translations, languages ] = args;
 
     if (typeof languages === 'string') {
         const [ language, country ] = languages.toLowerCase().split('-'); // Normalize to pre-iOS 10.2 Safari format
+        const translations = _translations as Translations<typeof base>;
 
-        return new Proxy(base as any, new T9NProxyHandler([base, ...[language, `${language}-${country?.toUpperCase()}`].map((lang) => translations![lang])]));
+        return new Proxy(base as any, new T9NProxyHandler([base, ...[language, `${language}-${country?.toUpperCase()}`].map((lang) => translations[lang])]));
     } else if (languages instanceof Array) {
-        return new Proxy(base as any, new T9NProxyHandler([base, ...languages.map((lang) => translations![lang])]));
+        const translations = _translations as Translations<typeof base>;
+
+        return new Proxy(base as any, new T9NProxyHandler([base, ...languages.map((lang) => translations[lang])]));
     } else {
         return new Proxy(base as any, new T9NProxyHandler([base, ...args as Array<Translation<typeof base> | undefined | null>]));
     }
