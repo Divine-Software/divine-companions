@@ -62,7 +62,7 @@ export function translated<T>(base: BaseTranslation<T>, ...args: Array<Translati
         const [ language, country ] = languages.toLowerCase().split('-'); // Normalize to pre-iOS 10.2 Safari format
         const translations = _translations as Translations<typeof base>;
 
-        return new Proxy(base as any, new T9NProxyHandler([base, ...[language, `${language}-${country?.toUpperCase()}`].map((lang) => translations[lang])]));
+        return new Proxy(base as any, new T9NProxyHandler([base, ...[language, `${language}-${country?.toUpperCase()}`].map((lang) => translations[lang!])]));
     } else if (languages instanceof Array) {
         const translations = _translations as Translations<typeof base>;
 
