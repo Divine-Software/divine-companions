@@ -1,6 +1,6 @@
 {
   "name": "@divine/judgement",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "The Divine Judgement: Enforce TypeScript types at runtime",
   "author": "Martin Blom <martin@blom.org>",
   "license": "Apache-2.0",

@@ -1,6 +1,6 @@
 {
   "name": "@divine/companions",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "The Divine Companions Monorepo",
   "author": "Martin Blom <martin@blom.org>",
   "license": "Apache-2.0",
