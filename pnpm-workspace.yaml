@@ -1,2 +1,4 @@
 packages:
+  - judgement
+  - judgement-cli
   - localization

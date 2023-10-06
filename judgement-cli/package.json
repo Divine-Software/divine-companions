@@ -1,0 +1,39 @@
+{
+  "name": "@divine/judgement-cli",
+  "version": "0.0.1",
+  "description": "The Divine Judgement: Schema/Code generator CLI",
+  "author": "Martin Blom <martin@blom.org>",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/Divine-Software/divine-companions.git",
+  "bugs": "https://github.com/Divine-Software/divine-companions/issues",
+  "bin": "divine-judgement",
+  "main": "build/src/divine-judgement.js",
+  "types": "build/src/divine-judgement.d.ts",
+  "files": [
+    "CHANGELOG.md",
+    "build/src",
+    "build/package*",
+    "src"
+  ],
+  "jest": {
+    "testMatch": [
+      "<rootDir>/build/test/**/*.test.js"
+    ],
+    "collectCoverage": true
+  },
+  "dependencies": {
+    "commander": "^11.0.0",
+    "safe-stable-stringify": "^2.4.3",
+    "ts-json-schema-generator": "github:Divine-Software/ts-json-schema-generator#e3c0a3c",
+    "tslib": "^2.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.2"
+  },
+  "peerDependencies": {
+    "@divine/judgement": "workspace:*"
+  },
+  "engines": {
+    "node": ">= 12.17.0"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@divine/judgement",
+  "version": "0.0.1",
+  "description": "The Divine Judgement: Enforce TypeScript types at runtime",
+  "author": "Martin Blom <martin@blom.org>",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/Divine-Software/divine-companions.git",
+  "bugs": "https://github.com/Divine-Software/divine-companions/issues",
+  "main": "build/src/divine-judgement-runtime.js",
+  "types": "build/src/divine-judgement-runtime.d.ts",
+  "files": [
+    "CHANGELOG.md",
+    "build/src",
+    "build/package*",
+    "src"
+  ],
+  "jest": {
+    "testMatch": [
+      "<rootDir>/build/test/**/*.test.js"
+    ],
+    "collectCoverage": true
+  },
+  "dependencies": {
+    "ajv": "^8.12.0",
+    "tslib": "^2.6.2"
+  }
+}

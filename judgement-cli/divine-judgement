@@ -1,0 +1,10 @@
+#!/usr/bin/env node
+
+require('.').main(...process.argv.slice(1))
+    .catch((err) => {
+        console.error('Aborted:', err);
+        return 70;
+    })
+    .then((rc) => {
+        process.exit(rc);
+    });

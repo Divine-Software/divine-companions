@@ -1,6 +1,8 @@
 {
     "include": [],
     "references": [
+        { "path": "judgement" },
+        { "path": "judgement-cli" },
         { "path": "localization" },
     ]
 }
