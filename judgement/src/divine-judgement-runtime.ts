@@ -18,8 +18,8 @@ export interface SchemaValidators<TypeMap extends object> {
     is<K extends keyof TypeMap>(type: K, data: unknown): data is TypeMap[K];
 }
 
-export function createSchemaValidators<TypeMap extends object>(options?: Options): SchemaValidators<TypeMap> {
-    const ajv = new Ajv(options);
+export function createSchemaValidators<TypeMap extends object>(options?: Options, ext = (ajv: Ajv) => ajv): SchemaValidators<TypeMap> {
+    const ajv = ext(new Ajv(options));
     const validators: { [K in keyof TypeMap]?: ValidateFunction } = {};
 
     const as = <K extends keyof TypeMap>(type: K, data: unknown, source?: string) => {
