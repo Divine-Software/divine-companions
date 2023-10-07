@@ -62,7 +62,7 @@ export async function main(): Promise<number> {
     return 0;
 }
 
-function createModule(schema: Definition, typeMaps: TypeMap[], cwd: string) {
+export function createModule(schema: Definition, typeMaps: TypeMap[], cwd: string): string {
     let code = `import { createSchemaValidators as $createSchemaValidators } from '@divine/judgement';\n`;
 
     for (const typeMap of typeMaps) {
