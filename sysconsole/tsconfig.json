@@ -1,25 +1,11 @@
 {
-  "include": ["src/*.ts"],
-  "compilerOptions": {
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "declaration": true,
-    "outDir": "./lib",
-    "target": "es6",
-
-    "downlevelIteration": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "preserveSymlinks": true,
-    "resolveJsonModule": true,
-
-    "alwaysStrict": false,
-    "noFallthroughCasesInSwitch": true,
-    "noImplicitAny": true,
-    "noImplicitReturns": true,
-    "noImplicitThis": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "strict": true,
-  }
+    "extends": "../tsconfig.base.json",
+    "include": [
+        "src/**/*.ts", "test/**/*.ts"
+    ],
+    "compilerOptions": {
+        "outDir": "build",
+    },
+    "references": [
+    ]
 }

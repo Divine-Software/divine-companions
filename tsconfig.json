@@ -4,5 +4,6 @@
         { "path": "judgement" },
         { "path": "judgement-cli" },
         { "path": "localization" },
+        { "path": "sysconsole" },
     ]
 }

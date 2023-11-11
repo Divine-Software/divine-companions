@@ -4,6 +4,7 @@
   "description": "The Divine Localization Library",
   "author": "Martin Blom <martin@blom.org>",
   "license": "Apache-2.0",
+  "homepage": "https://github.com/Divine-Software/divine-companions/tree/master/localization",
   "repository": "https://github.com/Divine-Software/divine-companions.git",
   "bugs": "https://github.com/Divine-Software/divine-companions/issues",
   "main": "build/src/index.js",

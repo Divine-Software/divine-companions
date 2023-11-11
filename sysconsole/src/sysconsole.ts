@@ -5,7 +5,19 @@ import { Writable } from 'stream';
 import Syslog from 'syslog-client';
 import { InspectOptions } from 'util';
 
-export type Facility = 'kern' | 'user' | 'mail' | 'daemon' | 'auth' | 'syslog' | 'lpr' | 'news' | 'uucp' | 'cron' | 'authpriv' | 'ftp' | 'ntp' | 'security' | 'console' | 'local0' | 'local1' | 'local2' | 'local3' | 'local4' | 'local5' | 'local6' | 'local7 ';
+/* eslint-disable @typescript-eslint/ban-types */
+/* eslint-disable no-control-regex */
+/* eslint-disable prefer-rest-params */
+
+const Facility: Record<Facility, number> = {
+    kern: 0, user: 1, mail: 2, daemon: 3, auth: 4, syslog: 5, lpr: 6, news: 7, uucp: 8, cron: 9, authpriv: 10, ftp: 11, ntp: 12, security: 13, console: 14, local0: 16, local1: 17, local2: 18, local3: 19, local4: 20, local5: 21, local6: 22, local7: 23
+}
+
+const Severity: Record<Severity, number> = {
+    emerg: 0, alert: 1,  crit: 2,  error: 3, warn: 4, notice: 5, info: 6, debug: 7
+}
+
+export type Facility = 'kern' | 'user' | 'mail' | 'daemon' | 'auth' | 'syslog' | 'lpr' | 'news' | 'uucp' | 'cron' | 'authpriv' | 'ftp' | 'ntp' | 'security' | 'console' | 'local0' | 'local1' | 'local2' | 'local3' | 'local4' | 'local5' | 'local6' | 'local7';
 export type Severity = 'emerg' | 'alert' | 'crit' | 'error' | 'warn' | 'notice' | 'info' | 'debug';
 
 export interface SysConsoleOptions {
@@ -38,6 +50,14 @@ export interface SysConsoleOptions {
 
 const ANSI_REGEXP = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
 
+function isValidFacility(facility: string): facility is Facility {
+    return typeof Facility[facility as Facility] === 'number';
+}
+
+function isValidSeverity(severity: string): severity is Severity {
+    return typeof Severity[severity as Severity] === 'number';
+}
+
 class LogBuffer extends Writable {
     private _buffer = '';
 
@@ -54,7 +74,7 @@ class LogBuffer extends Writable {
         }
     }
 
-    _write(chunk: string | Buffer, _encoding: string, callback: (error: Error | null) => void): void {
+    override _write(chunk: string | Buffer, _encoding: string, callback: (error: Error | null) => void): void {
         this._buffer += chunk.toString();
         callback(null);
     }
@@ -70,7 +90,7 @@ function getRootModule(module: NodeModule): NodeModule {
 
 interface ColorStream {
     isTTY?: boolean;
-    getColorDepth?(env?: {}): number;
+    getColorDepth(env?: object): number;
 }
 
 function defaultColorForStream(stream: NodeJS.WritableStream & ColorStream): boolean {
@@ -85,19 +105,7 @@ function stripANSI(message: string): string {
     return message.replace(ANSI_REGEXP, '');
 }
 
-function padStart(str: string, pad: string, length: number): string {
-    return (length > str.length ? Array(length - str.length + 1).join(pad) + str: str);
-}
-
 export class SysConsole extends console.Console {
-    private static readonly _facility: { [facility: string]: number } = {
-        kern: 0, user: 1, mail: 2, daemon: 3, auth: 4, syslog: 5, lpr: 6, news: 7, uucp: 8, cron: 9, authpriv: 10, ftp: 11, ntp: 12, security: 13, console: 14, local0: 16, local1: 17, local2: 18, local3: 19, local4: 20, local5: 21, local6: 22, local7: 23
-    }
-
-    private static readonly _severity: { [severity: string]: number } = {
-        emerg: 0, panic: 0, alert: 1,  crit: 2,  error: 3, err: 3, warn: 4, warning: 4, notice: 5, info: 6, debug: 7
-    }
-
     private static readonly _tagLength = '[notice]'.length; // Longest tag
 
     private _rootDir:   string;
@@ -173,11 +181,11 @@ export class SysConsole extends console.Console {
     set(options?: Partial<SysConsoleOptions>): this {
         this.options = { ...this.options, ...options };
 
-        if (typeof SysConsole._facility[this.options.facility] !== 'number') {
+        if (!isValidFacility(this.options.facility)) {
             throw new TypeError(`Invalid facility value '${this.options.facility}'`);
         }
 
-        if (typeof SysConsole._severity[this.options.highestLevel] !== 'number') {
+        if (!isValidSeverity(this.options.highestLevel)) {
             throw new TypeError(`Invalid highestLevel value '${this.options.highestLevel}'`);
         }
 
@@ -227,17 +235,13 @@ export class SysConsole extends console.Console {
         return this._wrapper('notice', this._log, arguments);
     }
 
-    debug(_message?: any, ..._optionalParams: any[]): void {
-        return this._wrapper('debug', this._log, arguments);
-    }
-
     private _initSyslog(): this {
         const target    = this.options.loghost;
         const port      = this.options.logport;
         const transport = this.options.tcpTimeout !== null ? Syslog.Transport.Tcp : Syslog.Transport.Udp;
 
         this._syslog?.close();
-        this._syslog = undefined;
+        delete this._syslog;
 
         if (this.options.syslog) {
             this._syslog = Syslog.createClient(target, { port, transport, tcpTimeout: this.options.tcpTimeout || undefined });
@@ -260,14 +264,12 @@ export class SysConsole extends console.Console {
         }
     }
 
-    private _logMessage(level: string, message: string) {
-        level = level === 'log' ? 'info' : level;
+    private _logMessage(name: string, message: string) {
+        const level = isValidSeverity(name) ? name
+                    : name === 'log'        ? 'info'
+                    :                         'debug';
 
-        if (typeof SysConsole._severity[level] !== 'number') {
-            level = 'debug';
-        }
-
-        if (!message || SysConsole._severity[level] > SysConsole._severity[this.options.highestLevel]) {
+        if (!message || Severity[level] > Severity[this.options.highestLevel]) {
             return;
         }
 
@@ -287,7 +289,7 @@ export class SysConsole extends console.Console {
         }
 
         if (this.options.showTags) {
-            consoleHeader += padStart(`[${level.toUpperCase()}]`, ' ', SysConsole._tagLength) + ' ';
+            consoleHeader += `[${level.toUpperCase()}]`.padStart(SysConsole._tagLength) + ' ';
         }
 
         if (this.options.syslogHashTags) {
@@ -299,14 +301,14 @@ export class SysConsole extends console.Console {
 
         if (this.options.showFile || this.options.showLine || this.options.showFunc || this.options.syslogMsgId === true) {
             const frame = StackTrace.get()[3];
-            const file  = path.relative(this._rootDir, frame.getFileName());
+            const file  = path.relative(this._rootDir, frame?.getFileName() ?? 'N/A');
             const parts = [];
 
             if (this.options.showFile) {
                 parts.push(file);
 
                 if (this.options.showLine) {
-                    parts.push(frame.getLineNumber());
+                    parts.push(frame?.getLineNumber() ?? -1);
                 }
             }
 
@@ -315,8 +317,8 @@ export class SysConsole extends console.Console {
             }
 
             if (this.options.showFunc) {
-                const type = frame.getTypeName() ? `${frame.getTypeName()}.` : '';
-                const func = frame.getMethodName() || frame.getFunctionName();
+                const type = frame?.getTypeName() ? `${frame.getTypeName()}.` : '';
+                const func = frame?.getMethodName() || frame?.getFunctionName();
 
                 if (func) {
                     parts.push(type + func);
@@ -339,8 +341,8 @@ export class SysConsole extends console.Console {
         if (this._syslog) {
             this._syslog.log(syslogHeader + stripANSI(message), {
                 rfc3164:        false,
-                facility:       SysConsole._facility[this.options.facility],
-                severity:       SysConsole._severity[level],
+                facility:       Facility[this.options.facility],
+                severity:       Severity[level],
                 syslogHostname: this.options.hostname,
                 appName:        this.options.title,
                 msgid:          syslogMsgId || undefined,

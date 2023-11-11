@@ -1,8 +1,8 @@
-import { SysConsole } from '../lib/sysconsole';
+import { SysConsole } from '../src/sysconsole';
 import { test2 } from './test2';
 
-var sysconsole = SysConsole.replaceConsole({ syslogMsgId: true, syslogTags: true });
-declare var console : SysConsole;
+const sysconsole = SysConsole.replaceConsole({ syslogMsgId: true, syslogTags: true });
+declare const console : SysConsole;
 
 
 SysConsole.replaceConsole({ facility: 'local0', title: 'MySweetApp', showFile: false, syslogTags: true, highestLevel: 'info' });

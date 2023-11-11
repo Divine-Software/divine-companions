@@ -2,3 +2,4 @@ packages:
   - judgement
   - judgement-cli
   - localization
+  - sysconsole
