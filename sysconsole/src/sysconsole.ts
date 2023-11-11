@@ -105,7 +105,7 @@ function stripANSI(message: string): string {
     return message.replace(ANSI_REGEXP, '');
 }
 
-export class SysConsole extends console.Console {
+export class SysConsole extends console.Console implements Record<'emerg' | 'alert' | 'crit' | 'notice', (message?: any, ..._optionalParams: any[]) => void> {
     private static readonly _tagLength = '[notice]'.length; // Longest tag
 
     private _rootDir:   string;
@@ -170,10 +170,7 @@ export class SysConsole extends console.Console {
 
             if (typeof sc[fn]  === 'function') {
                 const orig = sc[fn];
-
-                sc[fn] = function(this: SysConsole) {
-                    return this._wrapper(fn, orig, arguments);
-                }
+                sc[fn] = (...args: any[]) => sc._wrapper(fn, orig, args);
             }
         }
     }
@@ -219,20 +216,20 @@ export class SysConsole extends console.Console {
         return sc;
     }
 
-    emerg(_message?: any, ..._optionalParams: any[]): void {
-        return this._wrapper('emerg', this._error, arguments);
+    emerg = (...args: any[]): void => {
+        return this._wrapper('emerg', this._error, args);
     }
 
-    alert(_message?: any, ..._optionalParams: any[]): void {
-        return this._wrapper('alert', this._error, arguments);
+    alert = (...args: any[]): void => {
+        return this._wrapper('alert', this._error, args);
     }
 
-    crit(_message?: any, ..._optionalParams: any[]): void {
-        return this._wrapper('crit', this._error, arguments);
+    crit = (...args: any[]): void => {
+        return this._wrapper('crit', this._error, args);
     }
 
-    notice(_message?: any, ..._optionalParams: any[]): void {
-        return this._wrapper('notice', this._log, arguments);
+    notice = (...args: any[]): void => {
+        return this._wrapper('notice', this._log, args);
     }
 
     private _initSyslog(): this {
