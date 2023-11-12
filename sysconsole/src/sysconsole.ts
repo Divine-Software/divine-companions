@@ -7,7 +7,6 @@ import { InspectOptions } from 'util';
 
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable no-control-regex */
-/* eslint-disable prefer-rest-params */
 
 const Facility: Record<Facility, number> = {
     kern: 0, user: 1, mail: 2, daemon: 3, auth: 4, syslog: 5, lpr: 6, news: 7, uucp: 8, cron: 9, authpriv: 10, ftp: 11, ntp: 12, security: 13, console: 14, local0: 16, local1: 17, local2: 18, local3: 19, local4: 20, local5: 21, local6: 22, local7: 23
@@ -19,6 +18,8 @@ const Severity: Record<Severity, number> = {
 
 export type Facility = 'kern' | 'user' | 'mail' | 'daemon' | 'auth' | 'syslog' | 'lpr' | 'news' | 'uucp' | 'cron' | 'authpriv' | 'ftp' | 'ntp' | 'security' | 'console' | 'local0' | 'local1' | 'local2' | 'local3' | 'local4' | 'local5' | 'local6' | 'local7';
 export type Severity = 'emerg' | 'alert' | 'crit' | 'error' | 'warn' | 'notice' | 'info' | 'debug';
+
+export type SyslogFunctions = Record<Severity, (message?: any, ..._optionalParams: any[]) => void>;
 
 export interface SysConsoleOptions {
     highestLevel:   Severity;
@@ -105,8 +106,8 @@ function stripANSI(message: string): string {
     return message.replace(ANSI_REGEXP, '');
 }
 
-export class SysConsole extends console.Console implements Record<'emerg' | 'alert' | 'crit' | 'notice', (message?: any, ..._optionalParams: any[]) => void> {
-    private static readonly _tagLength = '[notice]'.length; // Longest tag
+export class SysConsole extends console.Console implements SyslogFunctions {
+    private static readonly _tagLength = Object.keys(Severity).reduce((max, tag) => Math.max(max, tag.length), 0) + 2 // '[Longest tag]'.length
 
     private _rootDir:   string;
     private _counter:   number;
@@ -196,6 +197,37 @@ export class SysConsole extends console.Console implements Record<'emerg' | 'ale
         return this._initSyslog();
     }
 
+    /**
+     * Returns an object containing all syslog functions up to and including the specified severity level.
+     *
+     * The result of this function is useful for passing to a `Partial<Console>` logger, so that only the functions up
+     * to and including the specified severity level are forwarded to this `SysConsole` instance..
+     *
+     * Note that the `SysConsole`'s configured highestLevel option is still respected. The `highestLevel` parameter only
+     * affects what functions to return.
+     *
+     * @param highestLevel  The highest severity level to include. Default is the currently set `highestLevel` option.
+     * @returns             An object containing all syslog functions up to and including the specified severity level.
+     */
+    syslogFunctions(highestLevel: Severity = this.options.highestLevel): Partial<SyslogFunctions> {
+        const result: Partial<SyslogFunctions> = {};
+
+        for (const [severity, level] of Object.entries(Severity) as [Severity, number][]) {
+            if (level <= Severity[highestLevel]) {
+                result[severity] = this[severity];
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Creates a new `SysConsole` instance and replaces the global console object with it.
+     *
+     * @param options         `SysConsole` options.
+     * @param inspectOptions  Node.js `InspectOptions`.
+     * @returns               The new `SysConsole` instance, which is also the new global console object.
+     */
     static replaceConsole(options?: Partial<SysConsoleOptions>, inspectOptions?: InspectOptions): SysConsole {
         const sc = new SysConsole(options, inspectOptions) as any;
 
