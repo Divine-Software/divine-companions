@@ -1,5 +1,11 @@
 # @divine/sysconsole
 
+## 2.1.1
+
+### Patch Changes
+
+- 245324a: Export SysConsole API as an interface (for global Console amendment).
+
 ## 2.1.0
 
 ### Minor Changes
@@ -13,7 +19,7 @@
 
 - Now supports passing custom `InspectOptions`.
 - Color support.
-- Requires *NodeJS* v10 because of this.
+- Requires _NodeJS_ v10 because of this.
 
 ## 1.1.0
 

@@ -1,6 +1,6 @@
 {
   "name": "@divine/sysconsole",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "A pretty Console that optionally also sends the logs to a remote Syslog server",
   "author": "Martin Blom <martin@blom.org>",
   "license": "Apache-2.0",
