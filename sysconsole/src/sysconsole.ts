@@ -21,6 +21,11 @@ export type Severity = 'emerg' | 'alert' | 'crit' | 'error' | 'warn' | 'notice' 
 
 export type SyslogFunctions = Record<Severity, (message?: any, ..._optionalParams: any[]) => void>;
 
+export interface SysConsoleFunctions extends SyslogFunctions {
+    set(options?: Partial<SysConsoleOptions>): this;
+    syslogFunctions(highestLevel?: Severity): Partial<SyslogFunctions>;
+}
+
 export interface SysConsoleOptions {
     highestLevel:   Severity;
 
@@ -106,7 +111,7 @@ function stripANSI(message: string): string {
     return message.replace(ANSI_REGEXP, '');
 }
 
-export class SysConsole extends console.Console implements SyslogFunctions {
+export class SysConsole extends console.Console implements Console, SysConsoleFunctions {
     private static readonly _tagLength = Object.keys(Severity).reduce((max, tag) => Math.max(max, tag.length), 0) + 2 // '[Longest tag]'.length
 
     private _rootDir:   string;
