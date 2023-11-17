@@ -1,3 +1,5 @@
+const hasOwn = (object: object, property: PropertyKey) => Object.prototype.hasOwnProperty.call(Object(object), property);
+
 type DeepPartialOrNull<T> =
     // eslint-disable-next-line @typescript-eslint/ban-types
     T extends Function ? T :
@@ -72,16 +74,54 @@ export function translated<T>(base: BaseTranslation<T>, ...args: Array<Translati
     }
 }
 
+/**
+ * Returns a view of the translation currently in effect. This is useful for interpolating values in a translation,
+ * where you might want to refer to other translations in the current language (falling back to the base translation if
+ * required).
+ *
+ * @template  Base  The type of the base/canonical translation.
+ * @param     base  The base translation, which defines what keys are available.
+ * @returns   A proxy-based view of the current translation, or just the base translation if called outside of a
+ *            translation.
+ */
+translated.current = <Base extends object>(base: Base & BaseTranslation<unknown>): Base => {
+    return new Proxy(base, {
+        get(target, pname: string | symbol): unknown {
+            return current?.get(target, pname) ?? Reflect.get(target, pname);
+        }
+    })
+}
+
+let current: T9NProxyHandler<unknown, Translation<BaseTranslation<unknown>>> | undefined;
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+const interpolator = (root: typeof current, thisArg: object, value: Function): Function => {
+    return (...args: unknown[]) => {
+        const previous = current;
+
+        try {
+            current = root;
+            return value.apply(thisArg, args);
+        } finally {
+            current = previous;
+        }
+    }
+}
+
 class T9NProxyHandler<T, Tr extends Translation<BaseTranslation<T>> & object> implements ProxyHandler<Tr> {
-    constructor(private _candidates: Array<Tr | null | undefined>) { }
+    constructor(private _candidates: Array<Tr | null | undefined>, private _root?: T9NProxyHandler<T, Tr>) {
+        this._root ??= this;
+     }
 
     get<K extends keyof Tr>(target: Tr, _pname: string | symbol): Tr[K] | undefined {
         const pname = _pname as K;
         const cands = this._candidates.map((c) => c?.[pname]).filter((v) => v != undefined /* [sic] not null/undefined */);
         const value = this._candidates[0]![pname] == undefined /* [sic] if base prop is null/undefined */ ? undefined : cands[cands.length - 1];
 
-        return typeof value === 'object' && value && Object.getPrototypeOf(value) === Object.prototype
-            ? new Proxy(cands[0] as unknown as object, new T9NProxyHandler(cands as any[]))
-            : value;
+        return typeof value === 'object' && value && hasOwn(target, pname)
+            ? new Proxy(cands[0] as unknown as object, new T9NProxyHandler(cands as any[], this._root))
+            : typeof value === 'function' && hasOwn(target, pname)
+                ? interpolator(this._root, target, value)
+                : value;
     }
 }

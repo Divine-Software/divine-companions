@@ -32,16 +32,20 @@ This TypeScript library is really more dogma than code. In fact, it currently on
   regarding input parameters and the return type.
 * You can define and use any kind of utility functions or lookup tables/dictionaries in your translations, including
   the standard [Intl] namespace for formatting dates, numbers and lists.
+* It's also possible to look up other translated keys from within a translation.
 
 ```tsx
 export const EN = {
     intro: {
         title: 'Introduction',
+        descr: () => `The "${C.title}" chapter`,
         about: (who: Person) => `About ${who.name}`,
         loves: (who: Person, what: Item, count: number) =>
             <>The gentle {who.name} <i>loves</i> {EN_PRONOUNS[who.gender]} little {EN_PLURAL(what, count)}.</>
     },
 }
+
+export const C = translated.current(EN);
 
 ...
 
@@ -63,7 +67,8 @@ const { intro } = translated(EN, ES) as typeof EN;
 
 const html = <body>
     <h1>{ intro.title }</h1>
-    <h2>{ intro.about(params.who) }</h2>
+    <h2>{ intro.descr() }</h2>
+    <h3>{ intro.about(params.who) }</h3>
     <p>{ intro.loves(params.who, params.what, params.count) }</p>
 </body>
 ```

@@ -111,4 +111,141 @@ describe('parameterized translation', () => {
         expect(spanish.loves({ name: 'Adira',  gender: 'o' }, 2, 'daughter')).toBe('El buen Adira ama sus pequeñas hijas');
         expect(spanish.loves({ name: 'Martin', gender: 'm' }, 1, 'son')).toBe('El buen Martin ama su pequeño hijo');
     });
+
+    it('handles nested/indirect translations', () => {
+        type Country = 'MX' | 'SE';
+
+        const en = {
+            countries: {
+                MX: 'Mexico',
+                SE: 'Sweden',
+            },
+
+            a: (country: Country) => `I live in ${en.countries[country]}`,
+            b: (country: Country) => `I live in ${current.countries[country]}`,
+
+            section: {
+                a: (country: Country) => `I live in ${current.countries[country]}`,
+                b: (country: Country) => `I live in ${current.countries[country]}`,
+
+                subsection: {
+                    xref: (country: Country) => `In ${current.countries[country]}, in Swedish: ${xswedish.count()}`
+                }
+            }
+        };
+
+        const current = translated.current(en) as typeof en;
+
+        const sv: Translation<typeof en> = {
+            countries: {
+                SE: 'Sverige',
+            },
+
+            // @ts-expect-error "'sv.countries' is possibly 'null' or 'undefined'" because sv.countries is not complete
+            a: (country: Country) => `Jag bor i ${sv.countries[country]}`,
+
+            section: {
+                a: (country: Country) => `Jag bor i ${current.countries[country]}`,
+
+                subsection: {
+                    xref: (country: Country) => `I ${current.countries[country]}, på svenska: ${xswedish.count()}`
+                }
+            }
+        }
+
+        const es: Translation<typeof en> = {
+            countries: {
+                SE: 'Suecia',
+            },
+
+            b: (country: Country) => `Vivo en ${current.countries[country]}`,
+
+            section: {
+                b: (country: Country) => `Vivo en ${current.countries[country]}`,
+
+                subsection: {
+                    xref: (country: Country) => `En ${current.countries[country]}, en sueco: ${xswedish.count()}`
+                }
+            },
+        }
+
+        const english = translated<string | Interpolated<string>>(en) as typeof en;
+        const swedish = translated<string | Interpolated<string>>(en, sv) as typeof en;
+        const spanish = translated<string | Interpolated<string>>(en, es) as typeof en;
+
+        const xbase = {
+            numbers: [ "One", "Two", "Three" ],
+            count:   () => xcurrent.numbers.join(', '),
+        };
+
+        const xcurrent = translated.current(xbase);
+        const xswedish = translated(xbase, {
+            numbers: [ "Ett", null, "Tre" ],
+        }) as typeof xbase;
+
+        // Country is not localized in base translation, and incorrectly referenced in the Swedish translation
+        expect(english.a('MX')).toBe('I live in Mexico');
+        expect(swedish.a('MX')).toBe('Jag bor i undefined');
+        expect(spanish.a('MX')).toBe('I live in Mexico');
+        expect(english.a('SE')).toBe('I live in Sweden');
+        expect(swedish.a('SE')).toBe('Jag bor i Sverige');
+        expect(spanish.a('SE')).toBe('I live in Sweden');
+
+        // Country is localized in base translation
+        expect(english.b('MX')).toBe('I live in Mexico');
+        expect(swedish.b('MX')).toBe('I live in Mexico');
+        expect(spanish.b('MX')).toBe('Vivo en Mexico');
+        expect(english.b('SE')).toBe('I live in Sweden');
+        expect(swedish.b('SE')).toBe('I live in Sverige');
+        expect(spanish.b('SE')).toBe('Vivo en Suecia');
+
+        // Country is not localized in base translation
+        expect(english.section.a('MX')).toBe('I live in Mexico');
+        expect(swedish.section.a('MX')).toBe('Jag bor i Mexico');
+        expect(spanish.section.a('MX')).toBe('I live in Mexico');
+        expect(english.section.a('SE')).toBe('I live in Sweden');
+        expect(swedish.section.a('SE')).toBe('Jag bor i Sverige');
+        expect(spanish.section.a('SE')).toBe('I live in Suecia');
+
+        // Country is localized in base translation
+        expect(english.section.b('MX')).toBe('I live in Mexico');
+        expect(swedish.section.b('MX')).toBe('I live in Mexico');
+        expect(spanish.section.b('MX')).toBe('Vivo en Mexico');
+        expect(english.section.b('SE')).toBe('I live in Sweden');
+        expect(swedish.section.b('SE')).toBe('I live in Sverige');
+        expect(spanish.section.b('SE')).toBe('Vivo en Suecia');
+
+        // Cross-calls between different translated contexts
+        expect(english.section.subsection.xref('MX')).toBe('In Mexico, in Swedish: Ett, Two, Tre');
+        expect(swedish.section.subsection.xref('MX')).toBe('I Mexico, på svenska: Ett, Two, Tre');
+        expect(spanish.section.subsection.xref('MX')).toBe('En Mexico, en sueco: Ett, Two, Tre');
+        expect(english.section.subsection.xref('SE')).toBe('In Sweden, in Swedish: Ett, Two, Tre');
+        expect(swedish.section.subsection.xref('SE')).toBe('I Sverige, på svenska: Ett, Two, Tre');
+        expect(spanish.section.subsection.xref('SE')).toBe('En Suecia, en sueco: Ett, Two, Tre');
+
+        // Ensure translated.current returns the correct translation, both when called directly and from within a translation
+        const cbase = {
+            direct: () => 'base',
+            indirect: () => ccurrent.direct(),
+            xref: () => xcurrent.count(),
+        };
+        const ccurrent = translated.current(cbase);
+        const cenglish = translated(cbase) as typeof cbase;
+        const cswedish = translated(cbase, {
+            direct: () => 'bas',
+        } satisfies Translation<typeof cbase>) as typeof cbase;
+
+        // When accessed outside a translation call stack, the base translation is used
+        expect(ccurrent.direct()).toBe('base');
+        expect(ccurrent.indirect()).toBe('base');
+        expect(ccurrent.xref()).toBe('One, Two, Three');
+
+        // When accessed from the translations, the translated value is used
+        expect(cenglish.direct()).toBe('base');
+        expect(cenglish.indirect()).toBe('base');
+        expect(cenglish.xref()).toBe('One, Two, Three');
+        expect(cswedish.direct()).toBe('bas');
+        expect(cswedish.indirect()).toBe('bas');
+        expect(cswedish.xref()).toBe('One, Two, Three'); // Different call stack => not translated
+    });
 });
