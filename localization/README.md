@@ -38,7 +38,7 @@ This TypeScript library is really more dogma than code. In fact, it currently on
 export const EN = {
     intro: {
         title: 'Introduction',
-        descr: () => `The "${C.title}" chapter`,
+        descr: () => `The "${C.intro.title}" chapter`,
         about: (who: Person) => `About ${who.name}`,
         loves: (who: Person, what: Item, count: number) =>
             <>The gentle {who.name} <i>loves</i> {EN_PRONOUNS[who.gender]} little {EN_PLURAL(what, count)}.</>
