@@ -1,5 +1,11 @@
 # @divine/localization
 
+## 1.0.0
+
+### Major Changes
+
+- dc924a0: Added translated.current() for recursive translations.
+
 ## 0.2.0
 
 ### Minor Changes
